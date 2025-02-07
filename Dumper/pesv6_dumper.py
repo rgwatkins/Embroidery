@@ -6,7 +6,6 @@ class HOOP(Enum):
     SIZE_272x272 = 2
     SIZE_408x272 = 3
 
-HIDE_STITCHES = True
 
 class PesDumperMixin:
 
@@ -64,7 +63,6 @@ class PesDumperMixin:
         self.dump_tagged_string('chart_length')
 
     def dump_csewseg_header(self):
-        ## self.dump_data('geometry_and_extents', 16)
         self.dump_vector_int16('geometry1', 4)
         self.dump_vector_int16('geometry2', 4)
         self.dump_vector_float32('transform_matrix', 6)
@@ -133,7 +131,7 @@ def dump_pes_data(f):
         n_blocks = f.dump_csewseg_header()
 
     for i in range(n_sew_segments):
-        with f.section('CSewSeg #{:d}'.format(i+1), tab=16, hide=HIDE_STITCHES):
+        with f.section('CSewSeg #{:d}'.format(i+1), tab=16, hide=not f.show_stitches):
             f.dump_utf8('section_id', length_size=2)
             f.print()
             f.dump_csewseg_stitch_list(n_blocks)

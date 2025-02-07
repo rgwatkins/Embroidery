@@ -123,12 +123,13 @@ def dump_pec_prologue(f):
     return width, height, indexes[:n_layers], layers
 
 
-def dump_pec_redundant_thread_indexes(f):
+def dump_pec_redundant_thread_indexes(f, original_indexes):
     ## One per section, after all prologues
     ## This is redundant, as the indexes were already read above. Here, we only have
     ## room for 127 indexes versus 463 above.
     with f.section('Redundant Thread Indexes'):
         n_changes_2 = f.dump_uint8('n_changes_2')
+        assert n_changes_2+1 == len(original_indexes)
         f.dump_data('thread_indexes', 127)
 
 
@@ -202,7 +203,7 @@ class Pec:
                 with svg.path(stroke_width=2,
                               stroke_color=('#{:02X}{:02X}{:02X}'
                                             .format(*self.rgbs[index]))) as path:
-                    path.move((x, y))
+                    path.move_abs((x, y))
                     for cmd, (dx, dy) in layer:
                         match Cmd(cmd):
                             case Cmd.STITCH:
@@ -245,7 +246,7 @@ def dump_pec_data(f, n_pecs):
     pecs = [Pec(*dump_pec_prologue(f)) for i in range(n_pecs)]
 
     for pec in pecs:
-        dump_pec_redundant_thread_indexes(f)
+        dump_pec_redundant_thread_indexes(f, pec.indexes)
     for pec in pecs:
         dump_pec_thread_bitmaps(f, pec.indexes)
     for pec in pecs:

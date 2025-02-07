@@ -19,11 +19,12 @@ SHOW_ADDRESSES = True
 SHOW_BITMAPS   = False
 SHOW_STITCHES  = False
 
-PES_PATH = 'holly_virgin.pes'
-PES_PATH = 'holly_unrotated.pes'
+PES_DIR = 'U:/Bob/Embroidery/'
+PES_PATH = 'holly_rotated.pes'
 PES_PATH = 'holly_200x200_4hoop_moved_y.pes'
 PES_PATH = 'holly_200x200_4hoop_moved_x.pes'
 PES_PATH = 'holly_200x200_4hoop.pes'
+PES_PATH = 'holly_unrotated.pes'
 
 
 description = "Dumps a .pes embroidery file."
@@ -46,7 +47,7 @@ def main():
 
     if 'INSIDE_EMACS' in environ:
         import sys
-        sys.argv = ['python3', PES_PATH]
+        sys.argv = ['python3', PES_DIR+PES_PATH]
         if SHOW_ADDRESSES:
             sys.argv.append('-a')
         if SHOW_BITMAPS:
@@ -113,7 +114,7 @@ def main():
             n_pecs = dump_pes_data(f)
             pecs = dump_pec_data(f, n_pecs)
 
-            if 'INSIDE_EMACS' in environ and SHOW_SVGS and ofile != stdout:
+            if 'INSIDE_EMACS' in environ and SHOW_SVGS:
                 for pec in pecs:
                     pec.render()
                     print()
