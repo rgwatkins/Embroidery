@@ -1,10 +1,10 @@
 from enum import Enum
 
 class HOOP(Enum):
-    SIZE_100x100 = 0
-    SIZE_180x130 = 1 
-    SIZE_272x272 = 2
-    SIZE_408x272 = 3
+    SIZE_100x100 = 1
+    SIZE_180x130 = 2 
+    SIZE_272x272 = 3
+    SIZE_408x272 = 4
 
 
 class PesDumperMixin:
@@ -23,10 +23,10 @@ class PesDumperMixin:
         return self.print_result(id, self.get_tagged_string(), fmt)
 
     def dump_header(self):
-        with self.section('PES Header'):
-            pec_offset = self.dump_uint32('pec_offset', fmt='0x{:08X}')
+        with self.section('PES Header Prologue'):
+            pec_offset = self.dump_uint32('pec_offset', fmt='hex')
             n_pecs = self.dump_uint16('n_pecs')
-            self.dump_data('unknown', 2)
+            self.dump_text('hoop_size', 2)
             self.dump_utf8('name')
             self.dump_utf8('category')
             self.dump_utf8('author')
@@ -36,12 +36,12 @@ class PesDumperMixin:
             self.dump_bool16('custom_design_page')
             self.dump_uint16('hoop_width')
             self.dump_uint16('hoop_height')
-            self.dump_uint16('design_page_area')
+            self.dump_uint16('design_page_area') # doc says "hoop rotation (1=90 degrees)
             self.dump_uint16('design_width')
             self.dump_uint16('design_height')
             self.dump_uint16('section_width')
             self.dump_uint16('section_height')
-            self.dump_data('unknown', 2)
+            self.dump_data('unknown', 2) # doc: must be in same ranges as section width & height 
             self.dump_uint16('background_color')
             self.dump_uint16('foreground_color')
             self.dump_bool16('show_grid')
@@ -58,13 +58,13 @@ class PesDumperMixin:
         self.dump_tagged_string('catalog_number')
         self.dump_data('color_rgbx', 4)
         self.dump_uint32('color_type')
-        self.dump_tagged_string('chart_index')
+        self.dump_tagged_string('chart_index') 
         self.dump_tagged_string('thread_brand')
-        self.dump_tagged_string('chart_length')
+        self.dump_tagged_string('chart_length') # doc says chart_name
 
     def dump_csewseg_header(self):
-        self.dump_vector_int16('geometry1', 4)
-        self.dump_vector_int16('geometry2', 4)
+        self.dump_vector_int16('extents1', 4)
+        self.dump_vector_int16('extents2', 4)
         self.dump_vector_float32('transform_matrix', 6)
         self.dump_data('unknown', 2)
         self.dump_int16('x_coordinate_translation')
@@ -73,7 +73,7 @@ class PesDumperMixin:
         self.dump_int16('height')
         self.dump_data('unknown', 8)
         n_blocks = self.dump_uint16('n_blocks')
-        self.dump_data('block_end_marker', 4)
+        assert(self.dump_uint32('end marker', fmt='hex') == 0xFFFF)
         return n_blocks
 
     def dump_csewseg_stitch_list(self, n_blocks):
@@ -123,14 +123,15 @@ def dump_pes_data(f):
             with f.subsection('Thread {:d}'.format(i+1)):
                 f.dump_thread()
 
-    with f.section('CEmbOne', tab=26):
-        n_sew_segments = f.dump_uint16('n_sew_segments')
-        assert(f.dump_uint32('marker', fmt='0x{:04X}') == 0xFFFF) # end of header marker
+    with f.section('PES Header Epilogue'):
+        n_objects = f.dump_uint16('n_objects')
+        assert(f.dump_uint32('end marker', fmt='hex') == 0xFFFF) # end of header marker
 
+    with f.section('CEmbOne', tab=26):
         f.dump_utf8('section_id', length_size=2)  # there is always a CEmbOne section
         n_blocks = f.dump_csewseg_header()
 
-    for i in range(n_sew_segments):
+    for i in range(n_objects):
         with f.section('CSewSeg #{:d}'.format(i+1), tab=16, hide=not f.show_stitches):
             f.dump_utf8('section_id', length_size=2)
             f.print()
