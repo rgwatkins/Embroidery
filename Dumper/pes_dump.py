@@ -17,13 +17,15 @@ from pec_dumper   import *
 SHOW_SVGS      = True
 SHOW_ADDRESSES = True
 SHOW_BITMAPS   = False
-SHOW_STITCHES  = False
+SHOW_STITCHES  = True
 
 PES_DIR = 'U:/Bob/Embroidery/'
-PES_PATH = 'holly_rotated.pes'
+PES_PATH = 'circle.pes'
+PES_PATH = 'rectangle.pes'
 PES_PATH = 'holly_200x200_4hoop_moved_y.pes'
 PES_PATH = 'holly_200x200_4hoop_moved_x.pes'
 PES_PATH = 'holly_200x200_4hoop.pes'
+PES_PATH = 'holly_rotated.pes'
 PES_PATH = 'holly_unrotated.pes'
 
 
@@ -102,10 +104,10 @@ def main():
                                   show_stitches=args.show_stitches,
                                   show_bitmaps=args.show_bitmaps) as f:
 
-            if (magic := f.get_data(4)) != b'#PES':
+            if (magic := f.get_text(4)) != '#PES':
                 exit('Unrecognized file type (magic="{:s}")'.format(str(magic, encoding='utf8')))
 
-            if (version := int(f.get_data(4))) == 1:
+            if (version := int(f.get_text(4))) == 1:
                 version = 10
             f.print('PES Version: {:d}.{:d}\n'.format(version//10, version%10))
             if not f.version_supported(version):

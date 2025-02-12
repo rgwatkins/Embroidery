@@ -22,7 +22,7 @@ class PesDumperMixin:
         self.print_addr()
         return self.print_result(id, self.get_tagged_string(), fmt)
 
-    def dump_header(self):
+    def dump_header_prologue(self):
         with self.section('PES Header Prologue'):
             pec_offset = self.dump_uint32('pec_offset', fmt='hex')
             n_pecs = self.dump_uint16('n_pecs')
@@ -66,12 +66,12 @@ class PesDumperMixin:
         self.dump_vector_int16('extents1', 4)
         self.dump_vector_int16('extents2', 4)
         self.dump_vector_float32('transform_matrix', 6)
-        self.dump_data('unknown', 2)
-        self.dump_int16('x_coordinate_translation')
-        self.dump_int16('y_coordinate_translation')
+        self.dump_data('unknown1', 2)
+        self.dump_int16('x_translation')
+        self.dump_int16('y_translation')
         self.dump_int16('width')
         self.dump_int16('height')
-        self.dump_data('unknown', 8)
+        self.dump_data('unknown2', 8)
         n_blocks = self.dump_uint16('n_blocks')
         assert(self.dump_uint32('end marker', fmt='hex') == 0xFFFF)
         return n_blocks
@@ -105,7 +105,7 @@ def dump_pes_data(f):
     just after the magic number and version. Leaves the file positioned at the start
     of the PEC data."""
 
-    n_pecs, pec_offset = f.dump_header()
+    n_pecs, pec_offset = f.dump_header_prologue()
 
     with f.section('Fill Patterns'):
         assert f.dump_uint16('n_fill_patterns') == 0
@@ -127,6 +127,22 @@ def dump_pes_data(f):
         n_objects = f.dump_uint16('n_objects')
         assert(f.dump_uint32('end marker', fmt='hex') == 0xFFFF) # end of header marker
 
+    ## Per doc, the structure is:
+    ##
+    ##   "CEmbOne" [object_header "CSewSeg" stitch_list* color_list]]**
+    ##
+    ## where:
+    ##  *  = repeated for number of blocks indicated in the object_header
+    ##  ** = repeated for the number of objects in the PES header
+    ##
+    ## Potentially, CSewSeg could be replaced with another object type,
+    ## such as CEmbRect or CEmbCirc.
+    ##
+    ## This has yet to be verified, as I have not been able to generate
+    ## files with multiple CSewSegs or with other objects, and it is not
+
+    ## reflected in the code below. 
+
     with f.section('CEmbOne', tab=26):
         f.dump_utf8('section_id', length_size=2)  # there is always a CEmbOne section
         n_blocks = f.dump_csewseg_header()
@@ -141,9 +157,10 @@ def dump_pes_data(f):
     excess = pec_offset-f.tell()
     if excess > 0:
         with f.section('Excess ({:d} bytes)'.format(excess), tab=0):
-            f.dump_data(None, excess)
-
-    f.seek(pec_offset)
+            for i in range(excess//8):
+                f.dump_vector_uint32(None, 2, fmt='hex')
+            
+    assert f.tell() == pec_offset
     return n_pecs
 
 
