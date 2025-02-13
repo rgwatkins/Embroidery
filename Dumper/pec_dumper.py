@@ -146,7 +146,7 @@ def dump_pec_thread_bitmaps(f, indexes):
 
 def dump_pec_thread_colors(f, n):
     ## One per section, after all prologues
-    with f.section('Colors'):
+    with f.section('Thread Colors'):
         rgbs = []
         for i in range(n):
             r,g,b = f.dump_data('thread_{:d}_color'.format(i+1), 3)
@@ -154,9 +154,9 @@ def dump_pec_thread_colors(f, n):
     return rgbs
 
 
-def dump_pec_epilogue(f, n):
-    ## Only one at very end of file
-    with f.section('Threads'):
+def dump_pec_thread_specifications(f, n):
+    ## One per section, after all prologues
+    with f.section('Thread Specifications'):
         f.print()
         threads = []
         for i in range(n):
@@ -216,12 +216,16 @@ class Pec:
                         y += dy*scale
 
 
-def dump_pec_extra_data(f, n):
+def dump_pec_section_data(f):
 
-    with f.section('More Thumbnails', tab=20, hide=not f.show_bitmaps):
+    with f.section('Section Thumbnails', hide=not f.show_bitmaps):
+
+        if (n := f.dump_uint16('n_section_thumbnails')) == 0:
+            return
+            
         SCAN_W = 11
         for i in range(n):
-            with f.subsection('Partial Thumbnail {:d}'.format(i+1)):
+            with f.subsection('Section Thumbnail {:d}'.format(i+1)):
                 for j in range(69):
                    f.dump_scanline(None, SCAN_W)
 
@@ -253,12 +257,10 @@ def dump_pec_data(f, n_pecs):
         pec.rgbs = dump_pec_thread_colors(f, len(pec.indexes))
         pec.remap()
 
-    n = f.dump_uint16('Number of Partial Thumbnails')
-    if n > 0:
-        dump_pec_extra_data(f, n)
+    dump_pec_section_data(f)
 
     for pec in pecs:
-        threads = dump_pec_epilogue(f, len(pec.indexes))
+        threads = dump_pec_thread_specifications(f, len(pec.indexes))
 
     return pecs
 
