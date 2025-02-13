@@ -35,13 +35,44 @@ class PES_File_Writer(PEC_File_Writer):
 
 class Thread:
 
-    def __init__(self):
-        self.catalog_number = ''
-        self.rgbx           = 0x00000000
-        self.color_type     = 0
-        self.chart_index    = ''
-        self.thread_brand   = ''
-        self.chart_length   = ''  # chart name?
+    def __init__(self, /,
+                 color_type     = 0,
+                 color_rgb      = (0, 0, 0),
+                 catalog_number = '',
+                 chart_index    = '',
+                 thread_brand   = '',
+                 chart_length   = ''):
+        self.color_type     = color_type
+        self.rgbx           = bytes(color_rgb + (0,))
+        self.thread_brand   = thread_brand
+        self.catalog_number = catalog_number
+        self.chart_index    = chart_index
+        self.chart_length   = chart_length
+
+    def __repr__(self):
+        name = __class__.__name__
+        return '{:s}({:s})'.format(name, (',\n'+(' '*(len(name)+1))).join((
+            "color_type     = {:d}"  .format(self.color_type),
+            "color_rgb      = {}"    .format(tuple(self.rgbx)[:3]),
+            "thread_brand   = '{:s}'".format(self.thread_brand),
+            "catalog_number = '{:s}'".format(self.catalog_number),
+            "chart_index    = '{:s}'".format(self.chart_index),
+            "chart_length   = '{:s}'".format(self.chart_length) )))
+
+    def __str__(self):
+        return '{:s} {:s} {}'.format(
+            self.thread_brand,
+            self.catalog_number,
+            tuple(self.rgbx)[:3])
+
+    def __eq__(self, other):
+        return isinstance(other, type(self)) and all((
+            self.color_type     == other.color_type,
+            self.rgbx           == other.rgbx,
+            self.thread_brand   == other.thread_brand,
+            self.catalog_number == other.catalog_number,
+            self.chart_index    == other.chart_index,
+            self.chart_length   == other.chart_length))
 
     def get(self, file):
         self.catalog_number = file.get_tagged_string()
@@ -66,9 +97,6 @@ class PES_Object:
 
     def __init__(self):
         pass
-
-    def __repr__(self):
-         return 'y_translation: {:d}'.format(self.y_translation)
 
     def get(self, file):
         self.extents1 = file.get_vector_int16(4)
@@ -142,15 +170,30 @@ class CSewSeg(PES_Object):
             file.put_uint16(color[0]) # block_index
             file.put_uint16(color[1]) # thread_index
 
+    def get_excess(self, file):
+        assert file.get_uint32() == 0 and file.get_uint32() == 0
+        for i in range(len(self.colors)):
+            assert file.get_uint32() == 0
+            assert file.get_uint32() == i
+
+    def put_excess(self, file):
+        file.put_uint32(0)
+        file.put_uint32(0)
+        for i in range(len(self.colors)):
+            file.put_uint32(0)
+            file.put_uint32(i)
+
     def get(self, file):
         self.get_stitch_list(file)
         self.get_color_list(file)
+        self.get_excess(file)
         return self
 
     def put(self, file):
         super().put(file)
         self.put_stitch_list(file)
         self.put_color_list(file)
+        self.put_excess(file)
 
 
 
@@ -265,18 +308,6 @@ class PESv6:
     def put_object(self, file, obj):
         obj.put(file)
 
-    def get_excess(self, file):
-        assert file.get_uint32() == 0 and file.get_uint32() == 0
-        for i in range(len(self.threads)-1):
-            assert file.get_uint32() == 0
-            assert file.get_uint32() == i
-
-    def put_excess(self, file):
-        file.put_uint32(0)
-        file.put_uint32(0)
-        for i in range(len(self.threads)-1):
-            file.put_uint32(0)
-            file.put_uint32(i)
 
 
     def get_section_data(self, file):
@@ -299,7 +330,6 @@ class PESv6:
             n_objects = self.get_header(file)
             self.get_cembone_tag(file)
             self.objects = [self.get_object(file) for _ in range(n_objects)]
-            self.get_excess(file)
 
             self.pecs = [PEC().get(file) for _ in range(self.n_pecs)]
             for pec in self.pecs:
@@ -327,7 +357,6 @@ class PESv6:
             self.put_cembone_tag(file)
             for obj in self.objects:
                 self.put_object(file, obj)
-            self.put_excess(file)
 
             for pec in self.pecs:
                 pec.put(file)
@@ -344,5 +373,6 @@ class PESv6:
                 pec.put_thread_specifications(file)
 
 if __name__ == '__main__':
-    p = PESv6().get('../Tests/rectangle.pes')
-    p.put('../Tests/rectum.pes')
+    p = PESv6().get('../Tests/holly_unrotated.pes')
+    ## p = PESv6().get('../Tests/rectangle.pes')
+    ## p.put('../Tests/rectum.pes')
