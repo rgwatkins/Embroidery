@@ -19,7 +19,7 @@ SHOW_ADDRESSES = True
 SHOW_BITMAPS   = False
 SHOW_STITCHES  = True
 
-PES_DIR = 'U:/Bob/Embroidery/'
+PES_DIR = 'U:/Bob/Projects/Embroidery/Tests/'
 PES_PATH = 'circle.pes'
 PES_PATH = 'rectangle.pes'
 PES_PATH = 'holly_200x200_4hoop_moved_y.pes'
@@ -27,7 +27,8 @@ PES_PATH = 'holly_200x200_4hoop_moved_x.pes'
 PES_PATH = 'holly_200x200_4hoop.pes'
 PES_PATH = 'holly_rotated.pes'
 PES_PATH = 'holly_unrotated.pes'
-
+PES_PATH = 'combo_resaved.pes'
+PES_PATH = 'combo.pes'
 
 description = "Dumps a .pes embroidery file."
 
