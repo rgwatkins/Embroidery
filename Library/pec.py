@@ -38,7 +38,9 @@ class PEC_File_Reader(BinaryFileReader):
                 args = [index[0]]
             else:
                 cmd2, value2 = self.get_coord()
-                assert cmd2 == cmd1
+                assert cmd2 == cmd1, (
+                    "commands don't match ({} != {}) before 0x{:04X}"
+                    .format(cmd1, cmd2, self.tell()))
                 cmd = Cmd(cmd1)
                 args = [value1, value2]
         return cmd, args
@@ -78,9 +80,13 @@ class PEC:
     def get(self, file):
 
         ## Header
-        assert file.get_text(3) == 'LA:'
+        assert file.get_text(3) == 'LA:', (
+            'no PEC marker found before 0x{:04X}'
+            .format(file.tell()))
         self.label          = file.get_text(16)
-        assert file.get_uint8() == ord('\r')
+        assert (ch := chr(file.get_uint8())) == '\r', (
+            'expected carriage return but got {!r:s} at end of PEC label before 0x{:04X}'
+            .format(ch, file.tell()))
         self.unknown1       = file.get_data(11)
         self.unknown2       = file.get_data(3)
         self.thumb_w        = file.get_uint8()   # in bytes, typically 6
@@ -168,7 +174,9 @@ class PEC:
 
 
     def get_redundant_indexes(self, file):
-        assert file.get_uint8() == self.n_changes
+        assert (n_changes := file.get_uint8()) == self.n_changes, (
+            'Different number of changes ({:d} versus {:d}) before 0x{:04X}'
+            .format(n_changes, self.n_changes, file.tell()))
         self.redundant_indexes = file.get_data(127)
 
     def put_redundant_indexes(self, file):
