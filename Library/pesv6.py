@@ -1,5 +1,6 @@
 from enum import Enum
 from binary_file import BinaryFileReader, BinaryFileWriter
+from pec import PEC_File_Reader, PEC_File_Writer, PEC
 
 class HOOP(Enum):
     SIZE_100x100 = 0
@@ -9,7 +10,7 @@ class HOOP(Enum):
 
 
 
-class PES_File_Reader(BinaryFileReader):
+class PES_File_Reader(PEC_File_Reader):
 
     def __init__(self, path):
         super(__class__, self).__init__(path)
@@ -20,7 +21,7 @@ class PES_File_Reader(BinaryFileReader):
         return(''.join(chr(self.get_uint16()) for _ in range(length)))  # unicode?
 
 
-class PES_File_Writer(BinaryFileWriter):
+class PES_File_Writer(PEC_File_Writer):
 
     def __init__(self, path):
         super(__class__, self).__init__(path)
@@ -86,16 +87,12 @@ class PES_Object:
 
 
     def put(self, file):
-        print(self)
         file.put_vector_int16(self.extents1)
         file.put_vector_int16(self.extents2)
         file.put_vector_float32(self.transform_matrix)
         file.put_data(self.unknown1)
         file.put_int16(self.x_translation)
-        print(self)
-        print(self.y_translation)
         file.put_int16(self.y_translation)
-        print(self)
         file.put_int16(self.width)
         file.put_int16(self.height)
         file.put_data(self.unknown2)
@@ -275,24 +272,56 @@ class PESv6:
             assert file.get_uint32() == i
 
     def put_excess(self, file):
-        self.put_version(file)
         file.put_uint32(0)
         file.put_uint32(0)
         for i in range(len(self.threads)-1):
             file.put_uint32(0)
             file.put_uint32(i)
 
+
+    def get_section_data(self, file):
+        self.n_section_thumbnails = file.get_uint16()
+        if self.n_section_thumbnails == 0:
+            return
+        pass  # TODO: complete this method
+        
+    def put_section_data(self, file):
+        file.put_uint16(self.n_section_thumbnails)
+        pass  # TODO: complete this method
+
+
+
     def get(self, path):
+
         with PES_File_Reader(path) as file:
+
             self.get_version(file)
             n_objects = self.get_header(file)
             self.get_cembone_tag(file)
             self.objects = [self.get_object(file) for _ in range(n_objects)]
             self.get_excess(file)
+
+            self.pecs = [PEC().get(file) for _ in range(self.n_pecs)]
+            for pec in self.pecs:
+                pec.get_redundant_indexes(file)
+            for pec in self.pecs:
+                pec.get_thread_bitmaps(file)
+            for pec in self.pecs:
+                pec.get_thread_colors(file)
+            
+            self.get_section_data(file)
+
+            for pec in self.pecs:
+                pec.get_thread_specifications(file)
+            
+
         return self
 
+
     def put(self, path):
+
         with PES_File_Writer(path) as file:
+
             self.put_version(file)
             self.put_header(file)
             self.put_cembone_tag(file)
@@ -300,6 +329,20 @@ class PESv6:
                 self.put_object(file, obj)
             self.put_excess(file)
 
+            for pec in self.pecs:
+                pec.put(file)
+            for pec in self.pecs:
+                pec.put_redundant_indexes(file)
+            for pec in self.pecs:
+                pec.put_thread_bitmaps(file)
+            for pec in self.pecs:
+                pec.put_thread_colors(file)
+
+            self.put_section_data(file)
+
+            for pec in self.pecs:
+                pec.put_thread_specifications(file)
+
 if __name__ == '__main__':
-    p = PESv6().get('rectangle.pes')
-    p.put('rectum.pes')
+    p = PESv6().get('../Tests/rectangle.pes')
+    p.put('../Tests/rectum.pes')
