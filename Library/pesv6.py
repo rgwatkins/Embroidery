@@ -36,60 +36,60 @@ class PES_File_Writer(PEC_File_Writer):
 class Thread:
 
     def __init__(self, /,
-                 color_type     = 0,
-                 color_rgb      = (0, 0, 0),
-                 catalog_number = '',
-                 chart_index    = '',
-                 thread_brand   = '',
-                 chart_length   = ''):
-        self.color_type     = color_type
-        self.rgbx           = bytes(color_rgb + (0,))
-        self.thread_brand   = thread_brand
-        self.catalog_number = catalog_number
-        self.chart_index    = chart_index
-        self.chart_length   = chart_length
+                 color_type        = 0,
+                 code              = '',
+                 description       = '',
+                 brand             = '',
+                 color_rgb         = (0, 0, 0),
+                 chart             = ''):
+        self.color_type   = color_type
+        self.brand        = brand
+        self.code         = code
+        self.description  = description
+        self.rgbx         = bytes(color_rgb + (0,))
+        self.chart        = chart
 
     def __repr__(self):
         name = __class__.__name__
         return '{:s}({:s})'.format(name, (',\n'+(' '*(len(name)+1))).join((
             "color_type     = {:d}"  .format(self.color_type),
+            "brand          = '{:s}'".format(self.brand),
+            "code           = '{:s}'".format(self.code),
+            "description    = '{:s}'".format(self.description),
             "color_rgb      = {}"    .format(tuple(self.rgbx)[:3]),
-            "thread_brand   = '{:s}'".format(self.thread_brand),
-            "catalog_number = '{:s}'".format(self.catalog_number),
-            "chart_index    = '{:s}'".format(self.chart_index),
-            "chart_length   = '{:s}'".format(self.chart_length) )))
+            "chart          = '{:s}'".format(self.chart) )))
 
     def __str__(self):
         return '{:s} {:s} {}'.format(
-            self.thread_brand,
-            self.catalog_number,
+            self.brand,
+            self.code,
             tuple(self.rgbx)[:3])
 
     def __eq__(self, other):
         return isinstance(other, type(self)) and all((
             self.color_type     == other.color_type,
+            self.brand          == other.brand,
+            self.code           == other.code,
+            self.description    == other.description,
             self.rgbx           == other.rgbx,
-            self.thread_brand   == other.thread_brand,
-            self.catalog_number == other.catalog_number,
-            self.chart_index    == other.chart_index,
-            self.chart_length   == other.chart_length))
+            self.chart          == other.chart))
 
     def get(self, file):
-        self.catalog_number = file.get_tagged_string()
+        self.code = file.get_tagged_string()
         self.rgbx           = file.get_data(4)
         self.color_type     = file.get_uint32()
-        self.chart_index    = file.get_tagged_string()
-        self.thread_brand   = file.get_tagged_string()
-        self.chart_length   = file.get_tagged_string() # chart name?
+        self.description    = file.get_tagged_string()
+        self.brand   = file.get_tagged_string()
+        self.chart   = file.get_tagged_string() # chart name?
         return self
 
     def put(self, file):
-        file.put_tagged_string(self.catalog_number)
+        file.put_tagged_string(self.code)
         file.put_data(self.rgbx)
         file.put_uint32(self.color_type)
-        file.put_tagged_string(self.chart_index)
-        file.put_tagged_string(self.thread_brand)
-        file.put_tagged_string(self.chart_length) # chart name?
+        file.put_tagged_string(self.description)
+        file.put_tagged_string(self.brand)
+        file.put_tagged_string(self.chart) # chart name?
 
 
 
@@ -331,6 +331,15 @@ class PESv6:
             self.get_cembone_tag(file)
             self.objects = [self.get_object(file) for _ in range(n_objects)]
 
+            ## If the design is spread across multiple hoops, there will
+            ## be a PEC for any hoop that includes any part of the design.
+            ## The data for each of these PECs is not contiguous in the
+            ## file. Rather the basic data for each of the PECs comes first.
+            ## This is followed by index table for each, followed by the thread
+            ## bitmaps for each, followed by the thread RGBs for each. At
+            ## this point there is a section containing bitmaps for the
+            ## entire design. Finally, there are thread specs for each of
+            ## the PECs.
             self.pecs = [PEC().get(file) for _ in range(self.n_pecs)]
             for pec in self.pecs:
                 pec.get_redundant_indexes(file)
@@ -338,12 +347,12 @@ class PESv6:
                 pec.get_thread_bitmaps(file)
             for pec in self.pecs:
                 pec.get_thread_colors(file)
-            
             self.get_section_data(file)
-
             for pec in self.pecs:
                 pec.get_thread_specifications(file)
-            
+
+            for pec in self.pecs:
+                pec.remap()
 
         return self
 
@@ -366,13 +375,13 @@ class PESv6:
                 pec.put_thread_bitmaps(file)
             for pec in self.pecs:
                 pec.put_thread_colors(file)
-
             self.put_section_data(file)
-
             for pec in self.pecs:
                 pec.put_thread_specifications(file)
 
+
 if __name__ == '__main__':
-    p = PESv6().get('../Tests/holly_unrotated.pes')
-    ## p = PESv6().get('../Tests/rectangle.pes')
-    ## p.put('../Tests/rectum.pes')
+    p = PESv6().get('../Tests/rectangle.pes')
+    p.put('../Tests/rectum.pes')
+
+

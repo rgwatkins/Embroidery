@@ -55,11 +55,11 @@ class PesDumperMixin:
         return n_pecs, pec_offset
 
     def dump_thread(self):
-        self.dump_tagged_string('catalog_number')
+        self.dump_tagged_string('code')
         self.dump_data('color_rgbx', 4)
         self.dump_uint32('color_type')
-        self.dump_tagged_string('chart_index') 
-        self.dump_tagged_string('thread_brand')
+        self.dump_tagged_string('description') 
+        self.dump_tagged_string('brand')
         self.dump_tagged_string('chart_length') # doc says chart_name
 
     def dump_csewseg_header(self):
