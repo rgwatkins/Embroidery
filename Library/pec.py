@@ -178,6 +178,11 @@ class PEC:
             'Different number of changes ({:d} versus {:d}) before 0x{:04X}'
             .format(n_changes, self.n_changes, file.tell()))
         self.redundant_indexes = file.get_data(127)
+        assert all(index == redundant_index
+                   for index, redundant_index in zip(self.indexes[:self.n_changes],
+                                                     self.redundant_indexes[:self.n_changes]))
+                                                         
+                   
 
     def put_redundant_indexes(self, file):
         file.put_uint8 (self.n_changes)
@@ -215,3 +220,21 @@ class PEC:
         for thread in self.threads:
             file.put_uint8(thread[0])
             file.put_uint16(thread[1])
+
+
+    def remap(self):
+
+        unique_rgbs = []
+        for rgb in self.rgbs:
+            if rgb not in unique_rgbs:
+                unique_rgbs.append(rgb)
+        self.rgbs = unique_rgbs
+
+        mapping = {}
+        index = 0
+        for old_index in self.indexes:
+            if old_index not in mapping:
+                mapping[old_index] = index
+                index += 1
+        self.indexes = bytes(mapping[color] for color in self.indexes)
+        self.redundant_indexes = bytes(mapping[color] for color in self.redundant_indexes)
